@@ -1,32 +1,38 @@
-# Multi-stage build supporting both standalone and Home Assistant add-on
-ARG BUILD_FROM=ghcr.io/hassio-addons/base-python:14.1.0
+# Home Assistant add-on Dockerfile
+ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base:latest
 FROM ${BUILD_FROM}
 
 # Set shell for add-on compatibility
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
-# Install Poetry
-RUN pip3 install poetry
-
-# Copy dependency files
-WORKDIR /app
-COPY pyproject.toml poetry.lock* ./
-
-# Install Python dependencies
+# Install system dependencies and Python packages
 RUN \
-    apk add --no-cache --virtual .build-dependencies \
+    apk add --no-cache \
+        python3 \
+        py3-pip \
+        py3-setuptools \
+        py3-wheel \
+    && apk add --no-cache --virtual .build-dependencies \
         gcc \
         musl-dev \
-        python3-dev \
-    && poetry config virtualenvs.create false \
-    && poetry install --only=main --no-dev \
+        python3-dev
+
+# Copy application source to /app
+WORKDIR /app
+COPY src/ ./src/
+COPY pyproject.toml poetry.lock* ./
+
+# Install Python dependencies with break-system-packages flag
+RUN \
+    pip3 install --break-system-packages \
+        "ocpp>=2.0.0" \
+        "aiohttp>=3.9.0" \
+        "websockets>=12.0" \
+        "PyYAML>=6.0.0" \
     && apk del .build-dependencies
 
-# Copy application source
-COPY src/ /app/src/
-
-# Copy Home Assistant add-on run script (if exists)
-COPY .hacs/run.sh /run.sh 2>/dev/null || echo "#!/bin/bash\nexec python3 -m src.ocpp_proxy.main" > /run.sh
+# Copy and setup run script
+COPY run.sh /
 RUN chmod a+x /run.sh
 
 # Expose WebSocket port
@@ -52,5 +58,5 @@ LABEL \
     org.opencontainers.image.revision="${BUILD_REF}" \
     org.opencontainers.image.version="${BUILD_VERSION}"
 
-# Default command (can be overridden by run script)
-CMD ["/run.sh"]
+# Start the run script
+CMD [ "/run.sh" ]
