@@ -1,3 +1,5 @@
-name: ocpp-proxy-test
-url: https://github.com/ekivel/ocpp-proxy-test/
-maintainer: levike28@gmail.com
+{
+  "name": "ocpp-proxy-test add-on repository",
+  "url": "https://github.com/ekivel/ocpp-proxy-test/",
+  "maintainer": "<9levike28@gmail.com>"
+}
